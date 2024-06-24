@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:detector_live_websocket/config/service/isolate_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image/image.dart' as paqImg;
@@ -61,17 +63,23 @@ class CameraProvider extends GetxController {
   Future<void> initializeStreaming() async {
 
     int contador = 0;
+    Uint8List bytes;
 
     await cameraController.startImageStream((image) async {
       contador++;
       // print(contador);
       if (contador%25 == 0) {
 
-        final bytes = await convertCameraImageToFile(image);
+        if (Platform.isAndroid) {
+          bytes = await convertCameraImageInIsolate(image);
+        } else {
+          bytes = await convertCameraImageToFile(image);
+        }
 
         channel = WebSocketChannel.connect(Uri.parse('ws://192.168.100.18:8080'));
 
         channel!.sink.add(bytes);
+        // channel!.sink.add('hola');
 
         channel!.stream.listen((message) {
           print(message);
@@ -104,8 +112,6 @@ class CameraProvider extends GetxController {
       order: paqImg.ChannelOrder.bgra,
     );
 
-    // final paqImg.Image rgbImage = convertCameraImageToImage(image);
-
     // Encode the image to JPEG
     final List<int> jpeg = paqImg.encodeJpg(rgbImage);
 
@@ -127,35 +133,19 @@ class CameraProvider extends GetxController {
     return bytes;
   }
 
-  paqImg.Image convertCameraImageToImage(CameraImage cImage) {
-  
-    final image = paqImg.Image(width: cImage.width, height: cImage.height);
-  
-    final frameSize = cImage.width * cImage.height;
-    final chromaSize = frameSize ~/ 4;
+  Future<Uint8List> convertCameraImageInIsolate(CameraImage cImage) async {
+    // Crear un ReceivePort para recibir mensajes del Isolate
+    final receivePort = ReceivePort();
 
-    final yData = cImage.planes[0].bytes.sublist(0, frameSize);
-    final uData = cImage.planes[1].bytes.sublist(frameSize, frameSize + chromaSize);
-    final vData = cImage.planes[2].bytes.sublist(frameSize + chromaSize, frameSize + 2 * chromaSize);
+    // Crear el Isolate
+    await Isolate.spawn(
+      convertYUV420toRGBIsolate,
+      IsolateData(cImage, receivePort.sendPort),
+    );
 
-    for (int j = 0; j < cImage.height; j++) {
-      for (int i = 0; i < cImage.width; i++) {
-        final yIndex = j * cImage.width + i;
-        final uvIndex = (j ~/ 2) * (cImage.width ~/ 2) + (i ~/ 2);
-
-        final y = yData[yIndex] & 0xff;
-        final u = uData[uvIndex] & 0xff;
-        final v = vData[uvIndex] & 0xff;
-
-        final r = (y + 1.402 * (v - 128)).clamp(0, 255).toInt();
-        final g = (y - 0.344136 * (u - 128) - 0.714136 * (v - 128)).clamp(0, 255).toInt();
-        final blue = (y + 1.772 * (u - 128)).clamp(0, 255).toInt();
-
-        image.setPixel(i, j, Color.fromARGB(0, r, g, blue) as paqImg.Color);
-      }
-    }
-
-    return image;
+    // Esperar por el resultado
+    final Uint8List result = await receivePort.first;
+    return result;
   }
 
 
