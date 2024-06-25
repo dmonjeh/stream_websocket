@@ -2,8 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:detector_live_websocket/config/service/isolate_service.dart';
-import 'package:flutter/material.dart';
+import 'package:detector_live_websocket/config/service/isolateData_service.dart';
 import 'package:get/get.dart';
 import 'package:image/image.dart' as paqImg;
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -64,28 +63,44 @@ class CameraProvider extends GetxController {
 
     int contador = 0;
     Uint8List bytes;
+    int frameRate = (Platform.isAndroid) ? 50 : 25;
+
+    // bloquea el enfoque y la exposición de la cámara para ganar rendimiento
+    await Future.wait([
+      cameraController.setFocusMode(FocusMode.locked),
+      cameraController.setExposureMode(ExposureMode.locked),
+    ]);
+
 
     await cameraController.startImageStream((image) async {
       contador++;
       // print(contador);
-      if (contador%25 == 0) {
+      if (contador%frameRate == 0) {
 
-        if (Platform.isAndroid) {
-          bytes = await convertCameraImageInIsolate(image);
-        } else {
-          bytes = await convertCameraImageToFile(image);
+        try {  
+
+          if (channel != null) {
+            channel = WebSocketChannel.connect(Uri.parse('ws://192.168.100.18:8080'));
+          }
+          
+          if (Platform.isAndroid) {
+            bytes = await convertCameraImageInIsolate(image);
+          } else {
+            bytes = await convertCameraImageToFile(image);
+          }
+
+          channel!.sink.add(bytes);
+          // channel!.sink.add('hola');
+
+          channel!.stream.listen((message) {
+            print(message);
+            patentes.add(message);
+            update(['camera-screen']);
+          });
+
+        } catch (e) {
+          print('Error: initializeStreaming(): $e');
         }
-
-        channel = WebSocketChannel.connect(Uri.parse('ws://192.168.100.18:8080'));
-
-        channel!.sink.add(bytes);
-        // channel!.sink.add('hola');
-
-        channel!.stream.listen((message) {
-          print(message);
-          patentes.add(message);
-          update(['camera-screen']);
-        });
 
       }
     });
@@ -93,10 +108,13 @@ class CameraProvider extends GetxController {
 
   Future<void> stopStreaming() async {
     print('DETENIENDO STREAMING');
-    await Future.wait([
-      cameraController.stopImageStream(),
-      channel!.sink.close(),
-    ]);
+
+    await cameraController.stopImageStream();
+
+    // Cierra el WebSocket solo si está abierto
+    if (channel != null && channel!.closeCode == null) {
+      await channel!.sink.close();
+    }
   }
 
   Future<Uint8List> convertCameraImageToFile(CameraImage image) async {
@@ -140,13 +158,12 @@ class CameraProvider extends GetxController {
     // Crear el Isolate
     await Isolate.spawn(
       convertYUV420toRGBIsolate,
-      IsolateData(cImage, receivePort.sendPort),
+      IsolateDataService(cImage, receivePort.sendPort),
     );
 
     // Esperar por el resultado
     final Uint8List result = await receivePort.first;
     return result;
   }
-
 
 }

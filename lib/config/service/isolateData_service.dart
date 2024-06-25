@@ -5,33 +5,48 @@ import 'package:camera/camera.dart';
 import 'package:image/image.dart' as paqImg;
 
 // Definir la estructura de los datos a pasar al Isolate
-class IsolateData {
+class IsolateDataService {
   final CameraImage cImage;
   final SendPort sendPort;
 
-  IsolateData(this.cImage, this.sendPort);
+  IsolateDataService(this.cImage, this.sendPort);
 }
 
 // Función de envoltura para ejecutar en el Isolate
-void convertYUV420toRGBIsolate(IsolateData isolateData) {
+void convertYUV420toRGBIsolate(IsolateDataService isolateData) {
 
   int width = isolateData.cImage.width;
   int height = isolateData.cImage.height;
-  var imgRgb = Uint8List(width * height * 3);
+  Uint8List imgRgb = Uint8List(width * height * 3);
 
   int uvRowStride = isolateData.cImage.planes[1].bytesPerRow;
   int uvPixelStride = isolateData.cImage.planes[1].bytesPerPixel ?? 1; // Asumir un valor por defecto si es null
 
+  // Pre-calcular factores para la conversión YUV a RGB
+  // const int factorR = 1436;
+  // const int factorG1 = 46549;
+  // const int factorG2 = 93604;
+  // const int factorB = 1814;
+  // const int offsetR = 179;
+  // const int offsetG1 = 44;
+  // const int offsetG2 = 91;
+  // const int offsetB = 227;
+
+  // Acceso directo a los datos de los planos
+  final yPlaneBytes = isolateData.cImage.planes[0].bytes;
+  final uPlaneBytes = isolateData.cImage.planes[1].bytes;
+  final vPlaneBytes = isolateData.cImage.planes[2].bytes;
+
   for (int y = 0; y < height; y++) {
     int yIndex = y * width;
-    int uvRowStart = uvRowStride * (y ~/ 2);
+    int uvRowStart = uvRowStride * (y >> 1); // Uso de operación bit a bit para dividir por 2
     for (int x = 0; x < width; x++) {
-      final int uvIndex = uvPixelStride * (x ~/ 2) + uvRowStart;
+      final int uvIndex = uvPixelStride * (x >> 1) + uvRowStart;
       final int index = yIndex + x;
 
-      final yp = isolateData.cImage.planes[0].bytes[index];
-      final up = isolateData.cImage.planes[1].bytes[uvIndex];
-      final vp = isolateData.cImage.planes[2].bytes[uvIndex];
+      final yp = yPlaneBytes[index];
+      final up = uPlaneBytes[uvIndex];
+      final vp = vPlaneBytes[uvIndex];
 
       // Convert YUV to RGB con optimizaciones matemáticas
       int r = (yp + vp * 1436 / 1024 - 179).round();
