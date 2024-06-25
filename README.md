@@ -1,16 +1,43 @@
 # detector_live_websocket
 
-A new Flutter project.
+Proyecto en Flutter(3.7.11) para el envío de fotogramas a un servidor WebSocket desarrollado en Python(3.12.4).
 
-## Getting Started
+## Requisitos
 
-This project is a starting point for a Flutter application.
+- Python 3.12.4
+- pip 3
+- virtual env
+- Flutter 3.7.11
 
-A few resources to get you started if this is your first Flutter project:
+## Preparar servidor
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Abrir carpeta server_websocket_python(en el proyecto) en una ventada nueva de Visual Studio Code.
+- crear entorno virtual:
+```
+virtualenv env
+```
+- activar entorno virtual:
+```
+source env/bin/source
+```
+- Instalar requirements.txt:
+```
+pip3 install -r requirements.txt
+```
+- Correr servidor:
+```
+python3 server.py
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Preparar cliente
+
+- en el archivo lib/config/constants/environment.dart, reemplazar por la ip y el puerto de acceso del servidor:
+```
+static const String webSocketIP = "ws://ip:puerto";
+
+EJ: ws://111.222.333.44:8080
+```
+
+## Servidor Pruebas
+
+- apuntar cliente a ip obtenida en ifconfig

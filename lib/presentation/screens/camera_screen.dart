@@ -1,5 +1,5 @@
 import 'package:camera/camera.dart';
-import 'package:detector_live_websocket/provider/camera_provider.dart';
+import 'package:detector_live_websocket/presentation/provider/camera_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -33,9 +33,9 @@ class CameraScreen extends StatelessWidget {
                               width: 90,
                               color: Colors.black.withOpacity(0.5),
                               child: ListView.builder(
-                                itemCount: cameraProvider.patentes.length,
+                                itemCount: cameraProvider.data.length,
                                 itemBuilder: (context, index) => Text(
-                                  cameraProvider.patentes[index],
+                                  cameraProvider.data[index],
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: Colors.white,
@@ -56,7 +56,7 @@ class CameraScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                'Patentes detectadas: ${cameraProvider.patentes.length}',
+                                'Datos detectados: ${cameraProvider.data.length}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
@@ -70,12 +70,12 @@ class CameraScreen extends StatelessWidget {
                     : const Center(child: CircularProgressIndicator()),
               
                   TextButton(
-                    onPressed: () async => await cameraProvider.initializeStreaming(),
-                    child: const Text('Iniciar streaming'),
-                  ),
-                  TextButton(
-                    onPressed: () async => await cameraProvider.stopStreaming(),
-                    child: const Text('detener streaming'),
+                    onPressed: (!cameraProvider.isStreaming)
+                     ? () async => await cameraProvider.initializeStreaming()
+                     : () async => await cameraProvider.stopStreaming(),
+                    child: (!cameraProvider.isStreaming)
+                     ? const Text('Iniciar streaming')
+                     : const Text('detener streaming'),
                   ),
               
                 ],

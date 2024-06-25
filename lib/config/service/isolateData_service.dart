@@ -13,7 +13,7 @@ class IsolateDataService {
 }
 
 // Función de envoltura para ejecutar en el Isolate
-void convertYUV420toRGBIsolate(IsolateDataService isolateData) {
+void convertYUV420toRGB(IsolateDataService isolateData) {
 
   int width = isolateData.cImage.width;
   int height = isolateData.cImage.height;
@@ -22,7 +22,8 @@ void convertYUV420toRGBIsolate(IsolateDataService isolateData) {
   int uvRowStride = isolateData.cImage.planes[1].bytesPerRow;
   int uvPixelStride = isolateData.cImage.planes[1].bytesPerPixel ?? 1; // Asumir un valor por defecto si es null
 
-  // Pre-calcular factores para la conversión YUV a RGB
+  //* Pre-calcular factores para la conversión YUV a RGB
+  //* estos valores se vuelven a usan sin variable, se guardan por los nombres
   // const int factorR = 1436;
   // const int factorG1 = 46549;
   // const int factorG2 = 93604;
@@ -63,9 +64,12 @@ void convertYUV420toRGBIsolate(IsolateDataService isolateData) {
   // Crear una imagen vacía con la biblioteca 'image'
   paqImg.Image image = paqImg.Image.fromBytes(width: width, height: height, bytes: imgRgb.buffer);
 
-  // Codificar la imagen a PNG
-  Uint8List png = Uint8List.fromList(paqImg.encodePng(image));
+  // Rotar la imagen
+  final imgRotate = paqImg.copyRotate(image, angle: 90);
+
+  // Codificar la imagen a JPEG
+  final List<int> jpeg = paqImg.encodeJpg(imgRotate, quality: 85);
 
   // Enviar el resultado de vuelta al hilo principal
-  isolateData.sendPort.send(png);
+  isolateData.sendPort.send(jpeg);
 }

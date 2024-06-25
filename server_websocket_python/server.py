@@ -25,12 +25,14 @@ async def handler(websocket, path):
 
         print('se guardo')
 
-        # Hacer una pausa de 1.5 segundos
+        # Hacer una pausa de 1.5 segundos emulando un proceso de reconocimiento de fotos
+        # retorna una lista de datos obtenidos de la imagen
         await asyncio.sleep(1.5)
-        patentes = ['AABB11', 'CCDD22', 'FFGG33']
+        dataImg = ['AABB11', 'CCDD22', 'FFGG33']
         
-        for patente in patentes:
-            await websocket.send(patente)  
+        # Enviar los datos obtenidos al cliente
+        for data in dataImg:
+            await websocket.send(data)  
 
     except websockets.ConnectionClosed:
         print("Connection closed by the client")
